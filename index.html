@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Fast Multiplication</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0; --surface:#fff; --surface2:#f0ede8; --border:#d8d4cc;
+  --text:#1a1814; --text2:#5a5650; --text3:#9a958e;
+  --blue:#2c5f9e; --red:#c0392b; --green:#1a7a4a; --orange:#e08020;
+  --font:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  --mono:'DM Mono',ui-monospace,monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);
+  min-height:100vh;-webkit-font-smoothing:antialiased;line-height:1.5;padding:24px 16px}
+.app{max-width:920px;margin:0 auto}
+
+.head{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+.head-ic{width:42px;height:42px;border-radius:10px;background:var(--surface2);
+  border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-weight:600;color:var(--text2);font-size:16px;flex-shrink:0}
+.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:3px}
+.title{font-size:22px;font-weight:700;color:var(--text);line-height:1.2}
+
+.card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:22px;margin-bottom:16px}
+.card-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:14px}
+
+.intro{font-size:14px;color:var(--text2);line-height:1.65;margin-bottom:18px}
+.intro strong{color:var(--text)}
+
+/* Mode picker */
+.mode-toggle{display:flex;gap:0;background:var(--surface2);border:1.5px solid var(--border);
+  border-radius:8px;padding:3px;margin:0 auto 18px;width:fit-content;flex-wrap:wrap}
+.mode-toggle button{padding:8px 14px;border:none;background:transparent;border-radius:6px;
+  font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;transition:all .15s}
+.mode-toggle button.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+/* Number input */
+.num-input-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.num-input-row label{font-size:13px;font-weight:600;color:var(--text2)}
+.num-input{width:180px;text-align:center;background:var(--surface);
+  border:1.5px solid var(--border);border-radius:8px;color:var(--text);
+  padding:10px 8px;font-size:22px;font-family:var(--mono);outline:none;font-weight:700;transition:all .15s}
+.num-input:focus{border-color:var(--blue)}
+
+.preset-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:20px}
+.preset{padding:6px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;
+  font-family:var(--mono);font-size:12px;color:var(--text2);cursor:pointer;font-weight:600;transition:all .12s}
+.preset:hover{border-color:var(--text3);color:var(--text)}
+
+/* The stacking computation visual */
+.stack-wrap{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;
+  padding:24px 20px;display:flex;justify-content:center;overflow-x:auto;margin-bottom:14px}
+.stack-grid{display:inline-grid;grid-auto-flow:row;gap:6px;font-family:var(--mono);font-size:24px;font-weight:700}
+.stack-row{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.stack-row .lead{font-size:18px;color:var(--text3);margin-right:8px;min-width:24px;text-align:right}
+.cell{width:38px;height:46px;border-radius:7px;display:flex;align-items:center;justify-content:center;line-height:1}
+.cell.top{background:#2c5f9e15;border:1.5px solid #2c5f9e;color:#2c5f9e}
+.cell.bot{background:#e0802015;border:1.5px solid #e08020;color:#e08020}
+.cell.zero{background:var(--surface);border:1.5px solid var(--border);color:var(--text3)}
+.cell.blank{background:transparent;border:1.5px dashed transparent}
+.cell.result{background:#fff;border:1.5px solid var(--text2);color:var(--text)}
+.cell.result.carry{background:#1a7a4a15;border-color:#1a7a4a;color:#1a7a4a;position:relative}
+.cell.result.carry .carry-mark{position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+  font-size:11px;color:#1a7a4a;background:var(--surface2);padding:0 4px;border-radius:3px;font-weight:700}
+.divider{height:2px;background:var(--text);margin:4px 0;border-radius:1px}
+
+.plus-line{display:flex;align-items:center;gap:6px}
+.plus-line .plus{font-size:22px;color:var(--text3);margin-right:8px;min-width:24px;text-align:right}
+
+/* Answer */
+.answer-row{display:flex;justify-content:center;align-items:center;gap:14px;
+  padding:16px 20px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;
+  font-family:var(--mono);margin-bottom:14px}
+.answer-row .ar-lbl{font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.answer-row .ar-formula{font-size:16px;color:var(--text);font-weight:600}
+.answer-row .ar-eq{color:var(--text3);font-size:16px}
+.answer-row .ar-val{font-size:26px;font-weight:700;color:var(--blue)}
+
+.insight{background:#fff8f0;border:1px solid #f0d8c0;border-left:3px solid var(--orange);
+  border-radius:0 8px 8px 0;padding:12px 15px;font-size:13px;color:#6b4400;
+  line-height:1.65;margin-top:14px}
+.insight strong{color:#4a2e00;font-weight:700}
+
+/* Recipe panel */
+.recipe{padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;margin-bottom:14px}
+.recipe-title{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.recipe-body{font-family:var(--mono);font-size:14px;color:var(--text);line-height:1.7}
+.recipe-body .hl{background:#1a7a4a15;color:#1a7a4a;padding:1px 4px;border-radius:3px;font-weight:700}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="head">
+    <div class="head-ic">6.1</div>
+    <div>
+      <div class="lbl">Chapter 6 · Section 6.1</div>
+      <div class="title">Fast Multiplication</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="intro">
+      Multiplying by <strong>11</strong> is the same as multiplying by 10 and adding once more. Multiplying by <strong>101</strong>: multiply by 100 and add. Multiplying by <strong>99</strong>: multiply by 100 and <em>subtract</em>. Each of these can be done in a single line — just shift the digits and stack. Try it: type any number and pick a multiplier.
+    </p>
+
+    <div class="mode-toggle">
+      <button class="active" data-mult="11">× 11</button>
+      <button data-mult="101">× 101</button>
+      <button data-mult="1001">× 1001</button>
+      <button data-mult="99">× 99</button>
+      <button data-mult="999">× 999</button>
+    </div>
+
+    <div class="num-input-row">
+      <label>Number:</label>
+      <input class="num-input" id="num" type="number" value="3874" min="1" max="99999999">
+    </div>
+
+    <div class="preset-row" id="presets"></div>
+
+    <div class="recipe" id="recipe"></div>
+
+    <div class="stack-wrap" id="stack"></div>
+
+    <div class="answer-row" id="answer"></div>
+
+    <div class="insight" id="insight"></div>
+  </div>
+</div>
+
+<script>
+const state = { n: 3874, mult: 11 };
+
+const PRESETS = {
+  11:   [94, 495, 3874, 5678, 3279, 4791256],
+  101:  [89, 949, 3874, 1111],
+  1001: [265831, 1111, 78901],
+  99:   [9734, 56, 234],
+  999:  [23478, 456, 1234]
+};
+
+document.querySelectorAll('.mode-toggle button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.mode-toggle button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.mult = +b.dataset.mult;
+    render();
+  });
+});
+
+document.getElementById('num').addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  if(!isNaN(v) && v >= 1 && v <= 99999999){
+    state.n = v;
+    render();
+  }
+});
+
+function buildPresets(){
+  const list = PRESETS[state.mult];
+  document.getElementById('presets').innerHTML = list.map(v =>
+    `<button class="preset" data-v="${v}">${v}</button>`
+  ).join('');
+  document.querySelectorAll('.preset').forEach(b => {
+    b.addEventListener('click', () => {
+      state.n = +b.dataset.v;
+      document.getElementById('num').value = state.n;
+      render();
+    });
+  });
+}
+
+function shiftAmount(mult){
+  // For 11 → shift by 1; for 101 → shift by 2; for 1001 → shift by 3
+  // For 99 = 100-1 → shift by 2 then subtract
+  // For 999 = 1000-1 → shift by 3 then subtract
+  if(mult === 11) return { shift: 1, sub: false };
+  if(mult === 101) return { shift: 2, sub: false };
+  if(mult === 1001) return { shift: 3, sub: false };
+  if(mult === 99) return { shift: 2, sub: true };
+  if(mult === 999) return { shift: 3, sub: true };
+  return { shift: 1, sub: false };
+}
+
+function multName(m){
+  if(m === 11) return '10 + 1';
+  if(m === 101) return '100 + 1';
+  if(m === 1001) return '1000 + 1';
+  if(m === 99) return '100 − 1';
+  if(m === 999) return '1000 − 1';
+  return String(m);
+}
+
+function digitsOf(n){
+  return String(n).split('');
+}
+
+function buildStack(){
+  const { n, mult } = state;
+  const { shift, sub } = shiftAmount(mult);
+  const digs = digitsOf(n); // MSB → LSB
+  const L = digs.length;
+  const product = n * mult;
+  const prodDigs = digitsOf(product);
+  const totalWidth = prodDigs.length;
+
+  // Build the two rows being stacked.
+  // Top row: n shifted by `shift` places to the LEFT (i.e., n × 10^shift)
+  //   This means: digs followed by `shift` zeros, all right-aligned in totalWidth.
+  // Bottom row: n itself, right-aligned in totalWidth. (For "sub" case, drawn with − sign.)
+  // We'll render with right-alignment.
+
+  function rowCells(digsArr, cls){
+    // Returns array of cells, padding with blank on the left to length totalWidth.
+    const pad = totalWidth - digsArr.length;
+    const cells = [];
+    for(let i=0;i<pad;i++) cells.push({type:'blank'});
+    for(const d of digsArr){
+      cells.push({type:cls, val:d});
+    }
+    return cells;
+  }
+
+  // Top: n followed by `shift` zeros
+  const topDigs = digs.concat(Array(shift).fill('0'));
+  // For zeros from the shift, render with `zero` class to distinguish
+  const topCells = [];
+  {
+    const pad = totalWidth - topDigs.length;
+    for(let i=0;i<pad;i++) topCells.push({type:'blank'});
+    for(let i=0;i<digs.length;i++) topCells.push({type:'top', val:digs[i]});
+    for(let i=0;i<shift;i++) topCells.push({type:'zero', val:'0'});
+  }
+  const botCells = rowCells(digs, 'bot');
+
+  // For subtraction (99, 999): result is top - bot (no carries to highlight up; borrows happen below).
+  // For addition: result is sum of top + bot. Identify which result digits required a carry.
+  const resultCells = [];
+  {
+    const pad = totalWidth - prodDigs.length;
+    for(let i=0;i<pad;i++) resultCells.push({type:'blank'});
+
+    if(!sub){
+      // addition: compute carries column by column from right
+      const carries = new Array(totalWidth).fill(false);
+      let carry = 0;
+      const topPad = topDigs;
+      const botPad = digs;
+      // pad both to totalWidth
+      const tArr = Array(totalWidth - topPad.length).fill(0).concat(topPad.map(Number));
+      const bArr = Array(totalWidth - botPad.length).fill(0).concat(botPad.map(Number));
+      // We process from rightmost column
+      const digitsResult = [];
+      for(let i=totalWidth-1; i>=0; i--){
+        const s = tArr[i] + bArr[i] + carry;
+        if(carry > 0) carries[i] = true;
+        carry = Math.floor(s/10);
+        digitsResult.unshift(s % 10);
+      }
+      // If final carry, prepend
+      if(carry > 0){
+        digitsResult.unshift(carry);
+      }
+      // Trim to prodDigs length
+      const trimmed = digitsResult.slice(-prodDigs.length);
+      // carries array indexed the same way as tArr/bArr (0..totalWidth-1, MSB-first)
+      const carryStartIdx = pad; // index in resultCells where actual digits begin
+      for(let i=0;i<prodDigs.length;i++){
+        const colIdx = carryStartIdx + i;
+        const carried = carries[colIdx] || false;
+        resultCells.push({type:'result', val:prodDigs[i], carry:carried});
+      }
+    } else {
+      // subtraction (99, 999): just show digits, mark column that needed a borrow.
+      const tArr = Array(totalWidth - topDigs.length).fill(0).concat(topDigs.map(Number));
+      const bArr = Array(totalWidth - digs.length).fill(0).concat(digs.map(Number));
+      const borrows = new Array(totalWidth).fill(false);
+      let borrow = 0;
+      const dr = [];
+      for(let i=totalWidth-1; i>=0; i--){
+        let s = tArr[i] - bArr[i] - borrow;
+        if(borrow > 0) borrows[i] = true;
+        if(s < 0){ s += 10; borrow = 1; } else borrow = 0;
+        dr.unshift(s);
+      }
+      // Result is dr; pad and slice
+      const trimmed = dr.slice(dr.length - prodDigs.length);
+      for(let i=0;i<prodDigs.length;i++){
+        const colIdx = pad + i;
+        const borrowed = borrows[colIdx] || false;
+        resultCells.push({type:'result', val:prodDigs[i], carry:borrowed});
+      }
+    }
+  }
+
+  // Render
+  function renderRow(cells, leadingLabel = ''){
+    let html = '<div class="stack-row">';
+    if(leadingLabel) html += `<span class="lead">${leadingLabel}</span>`;
+    else html += `<span class="lead"></span>`;
+    for(const c of cells){
+      if(c.type === 'blank') html += `<div class="cell blank"></div>`;
+      else if(c.type === 'top') html += `<div class="cell top">${c.val}</div>`;
+      else if(c.type === 'zero') html += `<div class="cell zero">${c.val}</div>`;
+      else if(c.type === 'bot') html += `<div class="cell bot">${c.val}</div>`;
+      else if(c.type === 'result') {
+        const carryMark = c.carry ? `<span class="carry-mark">${sub?'b':'+1'}</span>` : '';
+        html += `<div class="cell result ${c.carry?'carry':''}">${carryMark}${c.val}</div>`;
+      }
+    }
+    html += '</div>';
+    return html;
+  }
+
+  let html = '<div class="stack-grid">';
+  html += renderRow(topCells, '');
+  html += renderRow(botCells, sub ? '−' : '+');
+  // divider line
+  html += `<div class="divider"></div>`;
+  html += renderRow(resultCells, '');
+  html += '</div>';
+
+  return html;
+}
+
+function render(){
+  buildPresets();
+  document.getElementById('stack').innerHTML = buildStack();
+
+  // Recipe
+  const { n, mult } = state;
+  const { shift, sub } = shiftAmount(mult);
+  const product = n * mult;
+  const op = sub ? '−' : '+';
+  const shifted = n * Math.pow(10, shift);
+  const recipeEl = document.getElementById('recipe');
+  recipeEl.innerHTML = `
+    <div class="recipe-title">The recipe</div>
+    <div class="recipe-body">
+      <span class="hl">${n} × ${mult}</span> = ${n} × (${multName(mult)}) = (${n} × 10<sup>${shift}</sup>) ${op} ${n} = ${shifted} ${op} ${n}
+    </div>
+  `;
+
+  // Answer
+  document.getElementById('answer').innerHTML = `
+    <span class="ar-lbl">Answer:</span>
+    <span class="ar-formula">${n} × ${mult}</span>
+    <span class="ar-eq">=</span>
+    <span class="ar-val">${product}</span>
+  `;
+
+  // Insight
+  const ins = document.getElementById('insight');
+  if(mult === 11){
+    ins.innerHTML = `Shift left by 1 (write a 0 at the end) and add the original. For multi-digit numbers, neighbouring digits get added: the digit pattern <strong>d c b a → d, c+d, b+c, a+b, a</strong>. Watch for carries when any neighbour-sum reaches 10.`;
+  } else if(mult === 101 || mult === 1001){
+    const k = mult === 101 ? 2 : 3;
+    ins.innerHTML = `Shift left by ${k} places (append ${k} zeros) and add the original. Digits that don't overlap stay put; digits in the overlap region get added together. This is the same idea as ×11, just with a bigger gap.`;
+  } else if(mult === 99 || mult === 999){
+    const k = mult === 99 ? 2 : 3;
+    ins.innerHTML = `Shift left by ${k} and <strong>subtract</strong> instead of adding — because ${mult} = 10<sup>${k}</sup> − 1. The digit pattern is more involved because of borrows, but it's still one shift-and-combine operation.`;
+  }
+}
+
+render();
+</script>
+</body>
+</html>
